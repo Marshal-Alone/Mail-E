@@ -1,0 +1,4 @@
+.env
+LocalOTPServer
+*.log
+node_modules
