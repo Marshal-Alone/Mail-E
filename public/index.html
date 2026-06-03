@@ -138,3 +138,155 @@
       <div class="inbox-toolbar">
 
         <div class="tab-pills-group">
+          <button class="tab-pill active" data-filter="all">All (<span id="count-all">0</span>)</button>
+          <button class="tab-pill" data-filter="placement">Placements (<span id="count-placements">0</span>)</button>
+          <button class="tab-pill" data-filter="interview">Interviews (<span id="count-interviews">0</span>)</button>
+          <button class="tab-pill" data-filter="filtered">Noise (<span id="count-noise">0</span>)</button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
+          <div class="search-wrapper">
+            <i class="bi bi-search text-muted"></i>
+            <input type="text" id="input-search-feed" placeholder="Filter by company, subject, or recruiter...">
+          </div>
+
+          <button class="btn btn-sm btn-outline-danger py-1 px-2" id="btn-clear-inbox" title="Clear Inbound History"
+            style="font-size: 0.78rem;">
+            <i class="bi bi-trash3 me-1"></i> Clear History
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Feed Container: Full Width, Accordion Decision Inspector -->
+      <div class="email-feed" id="email-feed-container">
+        <!-- Rendered dynamically by app.js -->
+        <div class="text-center py-5 text-muted" id="feed-empty-state">
+          <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+          No emails loaded yet.<br>
+          Click <strong>Check Inbox</strong> to fetch from Gmail or <strong>Simulate Email</strong> to test.
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: Simulate Inbound Placement Email -->
+  <div class="modal fade" id="modal-simulate" tabindex="-1" aria-labelledby="modalSimulateLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content"
+        style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: #fff;">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h6 class="modal-title fw-bold" id="modalSimulateLabel">
+            <i class="bi bi-lightning-charge text-primary me-1"></i> Ingest & Simulate Placement Email
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+
+          <!-- Recruiter Preset Buttons -->
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-semibold">QUICK RECRUITER PRESETS:</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn-preset active" data-preset="tcs">TCS Digital (₹7.5 LPA)</button>
+              <button class="btn-preset" data-preset="amazon">Amazon SDE (₹28.5 LPA)</button>
+              <button class="btn-preset" data-preset="uber">Uber SDE-1 (₹38 LPA)</button>
+              <button class="btn-preset" data-preset="noise">Swiggy 50% Off (Noise)</button>
+            </div>
+          </div>
+
+          <!-- Email Input Form -->
+          <form id="simulate-form">
+            <div class="mb-3">
+              <label class="form-label text-secondary small">Sender Email Address</label>
+              <input type="text" class="form-control form-control-sm text-light border-secondary border-opacity-50"
+                id="sim-sender" style="background: var(--bg-input);" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary small">Email Subject Line</label>
+              <input type="text" class="form-control form-control-sm text-light border-secondary border-opacity-50"
+                id="sim-subject" style="background: var(--bg-input);" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary small">Email Body Text Content</label>
+              <textarea
+                class="form-control form-control-sm text-light border-secondary border-opacity-50 font-monospace"
+                id="sim-body" rows="6" style="background: var(--bg-input); font-size: 0.82rem;" required></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-sm btn-primary px-3" id="btn-submit-simulate">
+                <i class="bi bi-play-fill me-1"></i> Ingest & Process Email
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Channel Settings -->
+  <div class="modal fade" id="modal-channels" tabindex="-1" aria-labelledby="modalChannelsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content"
+        style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: #fff;">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h6 class="modal-title fw-bold" id="modalChannelsLabel">
+            <i class="bi bi-gear text-secondary me-1"></i> Notification Channel Settings
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+
+          <!-- Telegram Chat Config -->
+          <div class="mb-4">
+            <label class="form-label text-light small fw-bold">
+              <i class="bi bi-telegram text-info me-1"></i> Telegram Chat ID
+            </label>
+            <div class="input-group input-group-sm mb-2">
+              <input type="text" class="form-control text-light border-secondary" id="cfg-telegram-id"
+                placeholder="e.g. 7983117485" style="background: var(--bg-input);">
+              <button class="btn btn-primary" id="cfg-btn-save-telegram">Save</button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <a href="https://t.me/mail_e_da_bot" target="_blank" class="small text-info text-decoration-none">
+                Open @mail_e_da_bot <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i>
+              </a>
+              <button class="btn btn-sm btn-outline-info py-0" id="cfg-btn-test-telegram"
+                style="font-size: 0.72rem;">Send Test Alert</button>
+            </div>
+          </div>
+
+          <!-- SMS Mobile Phone Config -->
+          <div>
+            <label class="form-label text-light small fw-bold">
+              <i class="bi bi-phone text-success me-1"></i> Mobile Phone Number (SMS Gateway)
+            </label>
+            <div class="input-group input-group-sm mb-2">
+              <input type="text" class="form-control text-light border-secondary" id="cfg-sms-phone"
+                placeholder="e.g. +918788516418" style="background: var(--bg-input);">
+              <button class="btn btn-success" id="cfg-btn-save-sms">Save</button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="small text-muted" id="cfg-sms-status">Gateway: Local Wi-Fi (SIM 2)</span>
+              <button class="btn btn-sm btn-outline-success py-0" id="cfg-btn-test-sms" style="font-size: 0.72rem;">Send
+                Test SMS</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Modern Application Controller -->
+  <script src="js/app.js?v=2.2"></script>
+</body>
+
+</html>
