@@ -120,15 +120,71 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgTelegramId.value = data.telegram.chatId;
       }
 
-      // SMS
+      // SMS Gateway Status
+      const pillSms = document.getElementById('pill-sms');
+      const bannerOffline = document.getElementById('banner-service-offline');
+      const bannerText = document.getElementById('banner-offline-text');
+      const modalSmsBadge = document.getElementById('modal-sms-badge');
+      const modalSmsDiag = document.getElementById('modal-sms-diag');
+      const modalSmsDiagIcon = document.getElementById('modal-sms-diag-icon');
+      const modalSmsDiagTitle = document.getElementById('modal-sms-diag-title');
+      const modalSmsDiagDesc = document.getElementById('modal-sms-diag-desc');
+      const modalSmsDiagSteps = document.getElementById('modal-sms-diag-steps');
+      const cfgSmsUrl = document.getElementById('cfg-sms-url');
+
+      if (cfgSmsUrl && data.sms.gatewayUrl && !cfgSmsUrl.value) {
+        cfgSmsUrl.value = data.sms.gatewayUrl;
+      }
+
       if (data.sms.online) {
         dotSms.className = 'status-indicator online';
-        textSms.textContent = `SMS: Online (${data.sms.phoneNumber || 'Ready'})`;
+        textSms.textContent = `SMS: Online (SIM 2)`;
+        if (pillSms) {
+          pillSms.className = 'channel-pill active';
+          pillSms.title = `Phone Gateway connected at ${data.sms.gatewayUrl || 'Wi-Fi'} (SIM 2)`;
+        }
         if (cfgSmsStatus) cfgSmsStatus.textContent = `Gateway: Online at ${data.sms.gatewayUrl || 'Wi-Fi'} (SIM 2)`;
+
+        if (modalSmsBadge) {
+          modalSmsBadge.className = 'badge bg-success';
+          modalSmsBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i> Online (SIM 2)';
+        }
+        if (modalSmsDiag) {
+          modalSmsDiag.className = 'offline-diag-card is-online mt-2 mb-3';
+          if (modalSmsDiagIcon) modalSmsDiagIcon.className = 'bi bi-check-circle-fill text-success fs-5 mt-1';
+          if (modalSmsDiagTitle) modalSmsDiagTitle.textContent = 'Phone Gateway Connected';
+          if (modalSmsDiagDesc) modalSmsDiagDesc.innerHTML = `Connected to Android device at <code>${data.sms.gatewayUrl}</code>.`;
+          if (modalSmsDiagSteps) modalSmsDiagSteps.classList.add('d-none');
+        }
+        if (bannerOffline) {
+          bannerOffline.classList.add('d-none');
+        }
       } else {
-        dotSms.className = 'status-indicator simulation';
-        textSms.textContent = `SMS: Simulation (${data.sms.phoneNumber || 'Ready'})`;
-        if (cfgSmsStatus) cfgSmsStatus.textContent = 'Gateway: Simulation Mode (Wi-Fi scanning active)';
+        dotSms.className = 'status-indicator offline';
+        textSms.textContent = `SMS: Offline (Disconnected)`;
+        if (pillSms) {
+          pillSms.className = 'channel-pill offline';
+          pillSms.title = `Android phone is unreachable at ${data.sms.gatewayUrl || 'http://10.69.134.73:8080'}. Telegram alerts remain 100% active.`;
+        }
+        if (cfgSmsStatus) cfgSmsStatus.textContent = `Gateway: Offline at ${data.sms.gatewayUrl || 'Wi-Fi'}`;
+
+        if (modalSmsBadge) {
+          modalSmsBadge.className = 'badge bg-danger';
+          modalSmsBadge.innerHTML = '<i class="bi bi-wifi-off me-1"></i> Offline / Unreachable';
+        }
+        if (modalSmsDiag) {
+          modalSmsDiag.className = 'offline-diag-card is-offline mt-2 mb-3';
+          if (modalSmsDiagIcon) modalSmsDiagIcon.className = 'bi bi-wifi-off text-danger fs-5 mt-1';
+          if (modalSmsDiagTitle) modalSmsDiagTitle.textContent = 'Android Gateway Offline (Phone Disconnected)';
+          if (modalSmsDiagDesc) modalSmsDiagDesc.innerHTML = `Server cannot reach phone at <code>${data.sms.gatewayUrl || 'http://10.69.134.73:8080'}</code> on local Wi-Fi.`;
+          if (modalSmsDiagSteps) modalSmsDiagSteps.classList.remove('d-none');
+        }
+        if (bannerOffline && !sessionStorage.getItem('dismiss_offline_banner')) {
+          bannerOffline.classList.remove('d-none');
+          if (bannerText) {
+            bannerText.innerHTML = `<strong>SMS Service Offline:</strong> Android phone gateway is unreachable at <code>${data.sms.gatewayUrl || '10.69.134.73:8080'}</code>. Telegram Bot alerts continue delivering normally.`;
+          }
+        }
       }
       if (cfgSmsPhone && data.sms.phoneNumber && !cfgSmsPhone.value) {
         cfgSmsPhone.value = data.sms.phoneNumber;
@@ -370,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Stage 3: Multi-Channel Dispatch Receipts
     const isAlerted = email.alertSent || (!isFiltered && (email.category === 'placement' || email.category === 'interview'));
+    const isSmsDelivered = Boolean(email.deliverySummary?.sms?.status === 'sent' || (email.deliverySummary?.sms?.deliveryId && !email.deliverySummary.sms.deliveryId.startsWith('SIM-')));
     html += `
       <div class="intel-card">
         <div class="section-title">CONCURRENT MULTI-CHANNEL DISPATCH (Promise.allSettled)</div>
@@ -388,13 +445,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div class="dispatch-receipt">
             <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-phone text-success fs-5"></i>
+              <i class="bi bi-phone ${isAlerted && isSmsDelivered ? 'text-success' : 'text-danger'} fs-5"></i>
               <div>
                 <strong class="d-block text-light" style="font-size: 0.84rem;">Android SMS Gateway</strong>
-                <span class="text-muted" style="font-size: 0.74rem;">Local Wi-Fi • SIM 2 Routing</span>
+                <span class="${isSmsDelivered ? 'text-muted' : 'text-warning'}" style="font-size: 0.74rem;">
+                  ${isSmsDelivered ? 'Local Wi-Fi • SIM 2 Routing' : 'Phone offline on Wi-Fi'}
+                </span>
               </div>
             </div>
-            <span class="badge ${isAlerted ? 'bg-success' : 'bg-secondary'}">${isAlerted ? 'Delivered ✓' : 'Skipped'}</span>
+            ${
+              !isAlerted
+                ? '<span class="badge bg-secondary">Skipped</span>'
+                : isSmsDelivered
+                  ? '<span class="badge bg-success">Delivered ✓</span>'
+                  : '<span class="badge badge-receipt-offline" title="Phone was offline on local Wi-Fi. Telegram was dispatched as fail-safe."><i class="bi bi-wifi-off me-1"></i> Phone Offline</span>'
+            }
           </div>
 
         </div>
@@ -670,9 +735,74 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/sms/test', { method: 'POST' });
       const data = await res.json();
       if (data.ok) {
-        alert('✓ Test SMS sent via Android Gateway!');
+        if (data.result && data.result.status === 'offline') {
+          alert('⚠ Device Offline: Phone could not be reached at gateway URL. Make sure phone is connected to Wi-Fi and SMS Gateway app is running.');
+        } else {
+          alert('✓ Test SMS sent via Android Gateway!');
+        }
       } else {
         alert(data.message || 'Failed to send SMS test');
+      }
+    });
+  }
+
+  // Probe Phone Gateway live
+  const cfgBtnTestGateway = document.getElementById('cfg-btn-test-gateway');
+  const cfgBtnSaveGateway = document.getElementById('cfg-btn-save-gateway');
+  const cfgSmsUrl = document.getElementById('cfg-sms-url');
+
+  if (cfgBtnTestGateway) {
+    cfgBtnTestGateway.addEventListener('click', async () => {
+      cfgBtnTestGateway.disabled = true;
+      cfgBtnTestGateway.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Probing...';
+      try {
+        const res = await fetch('/api/sms/check-health');
+        const data = await res.json();
+        if (data.online) {
+          alert(`✓ Gateway is ONLINE! Connected to phone at ${data.url}`);
+        } else {
+          alert(`⚠ Gateway is OFFLINE: Cannot reach ${data.url} (${data.error || 'timeout'}). Check Wi-Fi connection and SMS Gateway app on your phone.`);
+        }
+        fetchStatus();
+      } catch (err) {
+        alert('Probe failed: ' + err.message);
+      } finally {
+        cfgBtnTestGateway.disabled = false;
+        cfgBtnTestGateway.textContent = 'Probe Gateway';
+      }
+    });
+  }
+
+  // Save Gateway URL
+  if (cfgBtnSaveGateway) {
+    cfgBtnSaveGateway.addEventListener('click', async () => {
+      const url = cfgSmsUrl ? cfgSmsUrl.value.trim() : '';
+      if (!url) return alert('Please enter a gateway URL (e.g. http://10.69.134.73:8080)');
+      try {
+        const res = await fetch('/api/sms/set-gateway', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gatewayUrl: url })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert(`✓ Gateway URL updated to ${data.gatewayUrl}! Probing connection...`);
+          fetchStatus();
+        }
+      } catch (err) {
+        alert('Failed to save gateway URL: ' + err.message);
+      }
+    });
+  }
+
+  // Dismiss Offline Banner
+  const btnCloseOfflineBanner = document.getElementById('btn-close-offline-banner');
+  if (btnCloseOfflineBanner) {
+    btnCloseOfflineBanner.addEventListener('click', () => {
+      const bannerOffline = document.getElementById('banner-service-offline');
+      if (bannerOffline) {
+        bannerOffline.classList.add('d-none');
+        sessionStorage.setItem('dismiss_offline_banner', 'true');
       }
     });
   }

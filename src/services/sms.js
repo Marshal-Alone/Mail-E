@@ -6,13 +6,24 @@
  * and dual-SIM routing.
  */
 
-const SMS_GATEWAY_URL = process.env.SMS_GATEWAY_URL || 'http://10.69.134.73:8080';
+let SMS_GATEWAY_URL = process.env.SMS_GATEWAY_URL || 'http://10.69.134.73:8080';
 const SMS_USERNAME = process.env.SMS_GATEWAY_USERNAME || 'sms';
 const SMS_PASSWORD = process.env.SMS_GATEWAY_PASSWORD || '123456789';
 const SIM_NUMBER = parseInt(process.env.SMS_GATEWAY_SIM_NUMBER || '2', 10);
 
 // HTTP Basic Authentication header (RFC 7617)
 const authHeader = Buffer.from(`${SMS_USERNAME}:${SMS_PASSWORD}`).toString('base64');
+
+export function getSmsGatewayUrl() {
+  return SMS_GATEWAY_URL;
+}
+
+export function setSmsGatewayUrl(url) {
+  if (url && typeof url === 'string') {
+    SMS_GATEWAY_URL = url.trim().replace(/\/+$/, '');
+  }
+  return SMS_GATEWAY_URL;
+}
 
 /**
  * Format structured AI analysis into a concise, high-impact SMS message
@@ -86,13 +97,14 @@ export async function sendSmsAlert(phoneNumber, messageText) {
     console.warn(`[SMS Gateway] Phone unreachable at ${SMS_GATEWAY_URL} (${err.message}). Using simulation fallback.`);
   }
 
-  // Graceful simulation fallback when the mobile gateway is offline
+  // Graceful fallback when the mobile gateway is offline
   return {
-    success: true,
-    status: 'simulated',
-    deliveryId: `SIM-SMS-${Date.now().toString().slice(-6)}`,
+    success: false,
+    status: 'offline',
+    simulated: true,
+    deliveryId: null,
     phone,
-    error: `Device offline at ${SMS_GATEWAY_URL} (simulation fallback)`
+    error: `Device unreachable at ${SMS_GATEWAY_URL} (phone offline on local Wi-Fi)`
   };
 }
 
@@ -109,7 +121,9 @@ export async function checkSmsServerHealth() {
     if (res.status < 500) {
       return { online: true, url: SMS_GATEWAY_URL };
     }
-  } catch { }
+  } catch (err) {
+    return { online: false, url: SMS_GATEWAY_URL, error: err.message };
+  }
 
-  return { online: false, url: SMS_GATEWAY_URL };
+  return { online: false, url: SMS_GATEWAY_URL, error: 'Non-200 HTTP response' };
 }

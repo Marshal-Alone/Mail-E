@@ -66,15 +66,16 @@ export async function dispatchMultiChannelAlerts({
 
     if (settled.status === 'fulfilled') {
       const resVal = settled.value || {};
-      const status = resVal.status === 'sent' ? 'sent' : 'simulated';
+      const status = resVal.status === 'sent' ? 'sent' : (resVal.status === 'offline' ? 'offline' : 'simulated');
       const deliveryId = resVal.deliveryId || null;
 
       deliverySummary[channel] = {
-        success: resVal.success ?? true,
+        success: resVal.success ?? (status === 'sent'),
         status,
         deliveryId,
         gatewayIp: resVal.gatewayIp,
-        phone: resVal.phone
+        phone: resVal.phone,
+        error: resVal.error || null
       };
 
       if (channel === 'telegram') {
@@ -86,6 +87,8 @@ export async function dispatchMultiChannelAlerts({
       } else if (channel === 'sms') {
         if (status === 'sent') {
           addLog('SMS_DISPATCH', `SMS Alert delivered to ${recipient} via Android SMS Gateway (${resVal.gatewayIp || 'Local Server'}) ✓`, 'success');
+        } else if (status === 'offline') {
+          addLog('SMS_DISPATCH', `Android phone gateway is OFFLINE. Telegram fail-safe dispatched alert successfully.`, 'warning');
         } else {
           addLog('SMS_DISPATCH', `SMS Alert queued for ${recipient} (Local OTP server simulation mode) ✓`, 'info');
         }

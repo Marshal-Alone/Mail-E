@@ -3,7 +3,7 @@ import User from '../models/User.js';
 import Email from '../models/Email.js';
 import { getAuthUrl, getTokensFromCode, fetchRecentEmails, getGmailProfile } from '../services/gmail.js';
 import { sendTelegramAlert } from '../services/telegram.js';
-import { sendSmsAlert, checkSmsServerHealth } from '../services/sms.js';
+import { sendSmsAlert, checkSmsServerHealth, getSmsGatewayUrl, setSmsGatewayUrl } from '../services/sms.js';
 import { processEmail } from '../services/emailProcessor.js';
 import { getMonitorStatus, pollInbox, updateMonitorConfig } from '../services/monitor.js';
 
@@ -305,6 +305,26 @@ router.post('/sms/test', async (req, res) => {
   const testMsg = `📱 [MAIL-E TEST SMS]\nConnected successfully to Android SMS Gateway! Phone: ${user.phoneNumber}`;
   const result = await sendSmsAlert(user.phoneNumber, testMsg);
   res.json({ ok: true, result });
+});
+
+/**
+ * POST /api/sms/set-gateway - Configure phone SMS Gateway URL
+ */
+router.post('/sms/set-gateway', (req, res) => {
+  const { gatewayUrl } = req.body;
+  if (!gatewayUrl) {
+    return res.status(400).json({ ok: false, message: 'Gateway URL is required' });
+  }
+  const updated = setSmsGatewayUrl(gatewayUrl);
+  res.json({ ok: true, gatewayUrl: updated, message: 'Gateway URL updated successfully' });
+});
+
+/**
+ * GET /api/sms/check-health - Probe phone gateway reachability
+ */
+router.get('/sms/check-health', async (req, res) => {
+  const health = await checkSmsServerHealth();
+  res.json({ ok: true, ...health });
 });
 
 /**
