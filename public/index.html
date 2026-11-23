@@ -80,6 +80,9 @@
             <li><button class="dropdown-item btn-set-interval" data-interval="10">Every 10 minutes</button></li>
             <li><button class="dropdown-item btn-set-interval" data-interval="15">Every 15 minutes</button></li>
             <li><button class="dropdown-item btn-set-interval" data-interval="30">Every 30 minutes</button></li>
+            <li><button class="dropdown-item btn-set-interval" data-interval="60">Every 1 hour</button></li>
+            <li><button class="dropdown-item btn-set-interval" data-interval="600">Every 10 hours</button></li>
+            <li><button class="dropdown-item btn-set-interval" data-interval="1440">Every 24 hours (Daily)</button></li>
             <li>
               <hr class="dropdown-divider border-secondary border-opacity-50">
             </li>
@@ -304,14 +307,32 @@
 
             <!-- Gateway URL Input -->
             <div class="mb-3">
-              <label class="form-label text-secondary small">Gateway Wi-Fi URL (Phone IP)</label>
+              <label class="form-label text-secondary small d-flex justify-content-between align-items-center">
+                <span>Gateway Wi-Fi URL (Phone IP)</span>
+                <a href="#guide-static-ip" class="text-decoration-none text-info small" data-bs-toggle="collapse" style="font-size: 0.73rem;">
+                  <i class="bi bi-pin-angle"></i> Stop IP from changing
+                </a>
+              </label>
               <div class="input-group input-group-sm mb-1">
                 <input type="text" class="form-control text-light border-secondary" id="cfg-sms-url"
-                  placeholder="e.g. http://10.69.134.73:8080" style="background: var(--bg-input);">
+                  placeholder="e.g. http://10.69.134.73:8080 or https://xyz.ngrok-free.app" style="background: var(--bg-input);">
                 <button class="btn btn-outline-info" id="cfg-btn-test-gateway">Probe Gateway</button>
                 <button class="btn btn-primary" id="cfg-btn-save-gateway">Save URL</button>
               </div>
-              <div class="form-text text-muted small" style="font-size: 0.72rem;">Enter the exact IP & port shown on your phone's SMS Gateway screen.</div>
+              <div class="form-text text-muted small" style="font-size: 0.72rem;">Enter the phone IP & port or public tunnel URL (ngrok/Cloudflare Tunnel).</div>
+
+              <!-- Collapsible Static IP Guide -->
+              <div class="collapse mt-2" id="guide-static-ip">
+                <div class="card card-body p-2 border-info border-opacity-25" style="background: rgba(14, 165, 233, 0.08); font-size: 0.75rem;">
+                  <strong class="text-info mb-1"><i class="bi bi-shield-lock me-1"></i> Keep Phone IP Permanent (30-sec Android setup):</strong>
+                  <ol class="mb-1 ps-3 text-secondary">
+                    <li>On phone: <strong>Settings</strong> ➔ <strong>Wi-Fi</strong> ➔ Tap current Wi-Fi gear/pencil icon.</li>
+                    <li>Tap <strong>Advanced</strong> or <strong>IP Settings</strong> ➔ Change <strong>DHCP</strong> to <strong>Static</strong>.</li>
+                    <li>Keep the current IP (e.g. <code>10.69.134.73</code>) and tap <strong>Save</strong>.</li>
+                  </ol>
+                  <span class="text-muted">Your router will now permanently preserve this IP for your phone!</span>
+                </div>
+              </div>
             </div>
 
             <!-- Phone Number Input -->

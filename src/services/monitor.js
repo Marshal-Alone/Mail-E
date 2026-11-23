@@ -12,7 +12,7 @@ let monitorIntervalId = null;
 let isPolling = false;
 
 const monitorStats = {
-  isRunning: false,
+  isRunning: true,
   lastPollTime: null,
   lastPollStatus: 'idle',
   pollIntervalMinutes: parseInt(process.env.POLL_INTERVAL_MINUTES || '3', 10),

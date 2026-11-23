@@ -399,6 +399,38 @@ app.post('/api/sms/set-gateway', async (c) => {
 });
 
 /**
+ * GET/POST /api/sms/heartbeat - Auto-register Android device dynamic IP
+ * Phone or shortcut can simply call: https://<worker>/api/sms/heartbeat?url=http://10.69.134.xx:8080
+ */
+app.all('/api/sms/heartbeat', async (c) => {
+  let urlParam = c.req.query('url') || c.req.query('ip');
+  if (!urlParam && c.req.method === 'POST') {
+    const body = await c.req.json().catch(() => ({}));
+    urlParam = body.url || body.ip;
+  }
+  if (!urlParam) {
+    return c.json({
+      ok: false,
+      currentGatewayUrl: getSmsGatewayUrl(),
+      message: 'Pass ?url=http://<phone-ip>:8080 or ?ip=<phone-ip> to auto-register'
+    }, 400);
+  }
+  let fullUrl = urlParam.trim();
+  if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+    fullUrl = `http://${fullUrl}`;
+  }
+  if (!fullUrl.includes(':', 7)) {
+    fullUrl = `${fullUrl}:8080`;
+  }
+  const updated = setSmsGatewayUrl(fullUrl);
+  return c.json({
+    ok: true,
+    gatewayUrl: updated,
+    message: `Phone gateway auto-registered to ${updated}`
+  });
+});
+
+/**
  * GET /api/sms/check-health - Probe phone gateway reachability
  */
 app.get('/api/sms/check-health', async (c) => {

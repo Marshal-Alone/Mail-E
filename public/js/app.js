@@ -194,7 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.monitor && textMonitor) {
         const isRunning = data.monitor.isRunning;
         const mins = data.monitor.pollIntervalMinutes;
-        textMonitor.textContent = isRunning ? `Monitor: ${mins}m` : 'Monitor: Paused';
+        let displayInterval = `${mins}m`;
+        if (mins >= 60 && mins % 60 === 0) {
+          displayInterval = `${mins / 60}h`;
+        }
+        textMonitor.textContent = isRunning ? `Monitor: ${displayInterval}` : 'Monitor: Paused';
         const dotMonitor = document.getElementById('dot-monitor');
         if (dotMonitor) {
           dotMonitor.className = isRunning ? 'status-indicator online' : 'status-indicator';

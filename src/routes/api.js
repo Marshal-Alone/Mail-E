@@ -320,6 +320,33 @@ router.post('/sms/set-gateway', (req, res) => {
 });
 
 /**
+ * GET/POST /api/sms/heartbeat - Auto-register Android device dynamic IP
+ */
+router.all('/sms/heartbeat', (req, res) => {
+  const urlParam = req.query.url || req.query.ip || req.body?.url || req.body?.ip;
+  if (!urlParam) {
+    return res.status(400).json({
+      ok: false,
+      currentGatewayUrl: getSmsGatewayUrl(),
+      message: 'Pass ?url=http://<phone-ip>:8080 or ?ip=<phone-ip> to auto-register'
+    });
+  }
+  let fullUrl = urlParam.trim();
+  if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+    fullUrl = `http://${fullUrl}`;
+  }
+  if (!fullUrl.includes(':', 7)) {
+    fullUrl = `${fullUrl}:8080`;
+  }
+  const updated = setSmsGatewayUrl(fullUrl);
+  res.json({
+    ok: true,
+    gatewayUrl: updated,
+    message: `Phone gateway auto-registered to ${updated}`
+  });
+});
+
+/**
  * GET /api/sms/check-health - Probe phone gateway reachability
  */
 router.get('/sms/check-health', async (req, res) => {
