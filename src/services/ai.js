@@ -28,22 +28,65 @@ Return ONLY a valid JSON object (no markdown, no backticks):
 `;
 
 /**
- * Pre-Filter: Fast keyword heuristic to reject noise (food, ads, discounts) without LLM cost
+ * Pre-Filter: Fast keyword heuristic to reject noise (food, ads, discounts, career promos) without LLM cost
+ * Supports user-configured custom rules (blacklisted senders, noise keywords, whitelists)
  */
-export function preFilterEmail(subject = '', body = '') {
+export function preFilterEmail(subject = '', body = '', sender = '', customRules = null) {
   const content = `${subject} ${body}`.toLowerCase();
+  const senderLower = (sender || '').toLowerCase();
 
-  // Noise patterns
+  // 1. Check User-Defined Custom Blocked Senders
+  if (customRules?.blockedSenders && Array.isArray(customRules.blockedSenders)) {
+    for (const blocked of customRules.blockedSenders) {
+      const cleanBlocked = blocked.trim().toLowerCase();
+      if (cleanBlocked && senderLower.includes(cleanBlocked)) {
+        return {
+          isRelevant: false,
+          reason: `Filtered by custom blocked sender: "${blocked.trim()}"`
+        };
+      }
+    }
+  }
+
+  // 2. Check User-Defined Custom Blocked Keywords
+  if (customRules?.blockedKeywords && Array.isArray(customRules.blockedKeywords)) {
+    for (const kw of customRules.blockedKeywords) {
+      const cleanKw = kw.trim().toLowerCase();
+      if (cleanKw && content.includes(cleanKw)) {
+        return {
+          isRelevant: false,
+          reason: `Filtered by custom noise keyword: "${kw.trim()}"`
+        };
+      }
+    }
+  }
+
+  // 3. Check User-Defined Whitelists (Instant Pass)
+  if (customRules?.allowedSenders && Array.isArray(customRules.allowedSenders)) {
+    for (const allowed of customRules.allowedSenders) {
+      const cleanAllowed = allowed.trim().toLowerCase();
+      if (cleanAllowed && senderLower.includes(cleanAllowed)) {
+        return {
+          isRelevant: true,
+          reason: `Passed via whitelisted sender: "${allowed.trim()}"`
+        };
+      }
+    }
+  }
+
+  // 4. Default Promotional & Noise Patterns
   const noisePatterns = [
     /swiggy|zomato|domino'?s|pizza|burger/i,
     /uber\s*eats|ola\s*cabs|rapido/i,
     /flat\s*\d+%\s*off|discount\s*coupon|promo\s*code|sale\s*ends/i,
     /newsletter\s*digest|unsubscribe\s*here/i,
-    /credit\s*card\s*offer|personal\s*loan|cashback/i
+    /credit\s*card\s*offer|personal\s*loan|cashback/i,
+    /irctc|wallet\s*top\s*up|e-?wallet|train\s*ticket|flight\s*booking/i,
+    /tips\s*to\s*crack|aptitude\s*test\s*tips|mock\s*test\s*series|masterclass|preparation\s*guide/i
   ];
 
   for (const pattern of noisePatterns) {
-    if (pattern.test(subject) && !/placement|campus|interview|recruitment|drive/i.test(subject)) {
+    if (pattern.test(subject) && !/official\s*campus|mandatory\s*drive/i.test(subject)) {
       return {
         isRelevant: false,
         reason: 'Detected marketing/promotional noise'
@@ -51,7 +94,7 @@ export function preFilterEmail(subject = '', body = '') {
     }
   }
 
-  // Positive recruitment signals
+  // 5. Positive recruitment signals
   const placementKeywords = [
     'placement', 'campus drive', 'recruitment', 'hiring challenge',
     'coding test', 'assessment', 'interview', 'shortlisted', 'shortlist',

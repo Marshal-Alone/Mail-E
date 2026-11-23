@@ -613,8 +613,140 @@ html, body {
   color: #ffffff;
 }
 
+/* Custom Filter Rule Tags */
+.rule-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.rule-tag.sender {
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #fda4af;
+}
+
+.rule-tag.keyword {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+}
+
+.rule-tag.allowed {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #a7f3d0;
+}
+
+.rule-tag .btn-remove-rule {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.15s ease;
+}
+
+.rule-tag .btn-remove-rule:hover {
+  color: var(--accent-rose);
+}
+
+/* 1-Click Action: Mark as Noise Button on Cards */
+.btn-mark-noise {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  font-size: 0.74rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-mark-noise:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #f59e0b;
+  color: #fef08a;
+}
+
 /* Accessibility Focus Visible */
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--accent-blue);
   outline-offset: 1px;
+}
+
+/* Custom Rules & Blacklist System */
+.rule-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  margin: 3px;
+}
+
+.rule-tag.sender-tag {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+  color: #fde68a;
+}
+
+.rule-tag.keyword-tag {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.08);
+  color: #fecdd3;
+}
+
+.rule-tag .btn-remove-tag {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rule-tag .btn-remove-tag:hover {
+  color: #ffffff;
+}
+
+.btn-mark-noise {
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-mark-noise:hover {
+  background: rgba(244, 63, 94, 0.2);
+  border-color: var(--accent-rose);
+  color: #ffffff;
 }

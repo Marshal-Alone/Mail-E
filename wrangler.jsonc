@@ -22,7 +22,10 @@
   },
   "vars": {
     "POLL_INTERVAL_MINUTES": "3",
-    "SMS_GATEWAY_URL": "http://100.95.255.93:8080",
+    "SMS_GATEWAY_URL": "https://api.sms-gate.app",
+    "SMS_GATEWAY_USERNAME": "7-U_KR",
+    "SMS_GATEWAY_PASSWORD": "ff7tccaalb7cct",
+    "SMS_GATEWAY_SIM_NUMBER": "2",
     "TELEGRAM_BOT_USERNAME": "MailE_Placement_Bot"
   },
   "alias": {

@@ -19,11 +19,30 @@ async function getOrCreateDefaultUser() {
       name: 'Campus Student',
       email: 'student.placement@college.edu',
       phoneNumber: process.env.STUDENT_PHONE || '+918788516418',
-      smsGatewayUrl: process.env.SMS_GATEWAY_URL || 'http://100.95.255.93:8080'
+      smsGatewayUrl: process.env.SMS_GATEWAY_URL || 'https://api.sms-gate.app',
+      customRules: {
+        blockedSenders: ['contentnc@naukri.com', 'naukri.com', 'digest@internshala.com'],
+        blockedKeywords: ['tips to crack', 'aptitude test', 'mock test', 'preparation guide', 'masterclass']
+      }
     });
-  } else if (!user.phoneNumber) {
-    user.phoneNumber = process.env.STUDENT_PHONE || '+918788516418';
-    await user.save();
+  } else {
+    let needsSave = false;
+    if (!user.phoneNumber) {
+      user.phoneNumber = process.env.STUDENT_PHONE || '+918788516418';
+      needsSave = true;
+    }
+    if (!user.customRules || !Array.isArray(user.customRules.blockedSenders) || user.customRules.blockedSenders.length === 0) {
+      user.customRules = {
+        blockedSenders: ['contentnc@naukri.com', 'naukri.com', 'digest@internshala.com'],
+        blockedKeywords: ['tips to crack', 'aptitude test', 'mock test', 'preparation guide', 'masterclass'],
+        allowedSenders: [],
+        allowedKeywords: []
+      };
+      needsSave = true;
+    }
+    if (needsSave) {
+      await user.save();
+    }
   }
   if (user.smsGatewayUrl) {
     setSmsGatewayUrl(user.smsGatewayUrl);
@@ -60,7 +79,15 @@ router.get('/status', async (req, res) => {
       online: smsHealth.online,
       gatewayUrl: smsHealth.url,
       phoneNumber: user.phoneNumber,
-      smsAlertsEnabled: user.smsAlertsEnabled
+      smsAlertsEnabled: user.smsAlertsEnabled,
+      mode: smsHealth.mode || 'cloud',
+      device: smsHealth.device || 'Android Phone'
+    },
+    customRules: user.customRules || {
+      blockedSenders: [],
+      blockedKeywords: [],
+      allowedSenders: [],
+      allowedKeywords: []
     },
     monitor: getMonitorStatus()
   });
@@ -80,13 +107,138 @@ router.get('/emails', async (req, res) => {
     const total = await Email.countDocuments();
     const placements = await Email.countDocuments({ category: 'placement' });
     const interviews = await Email.countDocuments({ category: 'interview' });
-    const noise = await Email.countDocuments({ status: 'filtered' });
+    const noise = await Email.countDocuments({
+      $or: [
+        { status: 'filtered' },
+        { category: { $in: ['promotional', 'other', 'noise'] } }
+      ]
+    });
 
     res.json({
       ok: true,
       stats: { total, placements, interviews, noise },
       emails
     });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/emails/:id/mark-noise - Mark email as noise and optionally add sender/keywords to blacklist
+ */
+router.post('/emails/:id/mark-noise', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { blockSender = true } = req.body;
+
+    const emailDoc = await Email.findById(id);
+    if (!emailDoc) {
+      return res.status(404).json({ ok: false, message: 'Email not found' });
+    }
+
+    emailDoc.category = 'promotional';
+    emailDoc.status = 'filtered';
+    emailDoc.filterReason = 'Manually classified as promotional noise by student';
+    await emailDoc.save();
+
+    const user = await getOrCreateDefaultUser();
+    let addedSender = null;
+    if (blockSender && emailDoc.sender) {
+      if (!user.customRules) {
+        user.customRules = { blockedSenders: [], blockedKeywords: [], allowedSenders: [], allowedKeywords: [] };
+      }
+      const emailMatch = emailDoc.sender.match(/<([^>]+)>/) || [null, emailDoc.sender.trim()];
+      const cleanSender = (emailMatch[1] || emailDoc.sender).trim().toLowerCase();
+      if (cleanSender && !user.customRules.blockedSenders.includes(cleanSender)) {
+        user.customRules.blockedSenders.push(cleanSender);
+        user.markModified('customRules');
+        await user.save();
+        addedSender = cleanSender;
+      }
+    }
+
+    res.json({
+      ok: true,
+      message: addedSender ? `Marked as noise and added ${addedSender} to blocked senders` : 'Marked as noise',
+      email: emailDoc,
+      addedSender
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/rules - Retrieve user custom filter rules
+ */
+router.get('/rules', async (req, res) => {
+  try {
+    const user = await getOrCreateDefaultUser();
+    res.json({
+      ok: true,
+      customRules: user.customRules || {
+        blockedSenders: [],
+        blockedKeywords: [],
+        allowedSenders: [],
+        allowedKeywords: []
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/rules - Add an item to custom filter rules
+ */
+router.post('/rules', async (req, res) => {
+  try {
+    const { type, value } = req.body;
+    if (!type || !value) {
+      return res.status(400).json({ ok: false, message: 'type and value are required' });
+    }
+
+    const user = await getOrCreateDefaultUser();
+    if (!user.customRules) {
+      user.customRules = { blockedSenders: [], blockedKeywords: [], allowedSenders: [], allowedKeywords: [] };
+    }
+
+    const cleanVal = value.trim().toLowerCase();
+    if (['blockedSenders', 'blockedKeywords', 'allowedSenders', 'allowedKeywords'].includes(type)) {
+      if (!user.customRules[type]) user.customRules[type] = [];
+      if (!user.customRules[type].includes(cleanVal)) {
+        user.customRules[type].push(cleanVal);
+        user.markModified('customRules');
+        await user.save();
+      }
+    }
+
+    res.json({ ok: true, customRules: user.customRules });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/rules - Remove an item from custom filter rules
+ */
+router.delete('/rules', async (req, res) => {
+  try {
+    const { type, value } = req.body;
+    if (!type || !value) {
+      return res.status(400).json({ ok: false, message: 'type and value are required' });
+    }
+
+    const user = await getOrCreateDefaultUser();
+    if (user.customRules && user.customRules[type]) {
+      const cleanVal = value.trim().toLowerCase();
+      user.customRules[type] = user.customRules[type].filter(item => item.toLowerCase() !== cleanVal);
+      user.markModified('customRules');
+      await user.save();
+    }
+
+    res.json({ ok: true, customRules: user.customRules });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -394,6 +546,111 @@ router.post('/monitor/poll', async (req, res) => {
   try {
     const result = await pollInbox();
     res.json({ ok: true, result, monitor: getMonitorStatus() });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/emails/:id/mark-noise - Manually mark an email as promotional noise & block sender
+ */
+router.post('/emails/:id/mark-noise', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { blockSender = true } = req.body || {};
+
+    const emailDoc = await Email.findById(id);
+    if (!emailDoc) {
+      return res.status(404).json({ ok: false, message: 'Email not found' });
+    }
+
+    emailDoc.category = 'promotional';
+    emailDoc.status = 'filtered';
+    emailDoc.filterReason = 'Manually classified as promotional noise by student';
+    await emailDoc.save();
+
+    const user = await getOrCreateDefaultUser();
+    let addedSender = null;
+    if (blockSender && emailDoc.sender) {
+      if (!user.customRules) {
+        user.customRules = { blockedSenders: [], blockedKeywords: [], allowedSenders: [], allowedKeywords: [] };
+      }
+      const emailMatch = emailDoc.sender.match(/<([^>]+)>/) || [null, emailDoc.sender.trim()];
+      const cleanSender = (emailMatch[1] || emailDoc.sender).trim().toLowerCase();
+      if (cleanSender && !user.customRules.blockedSenders.includes(cleanSender)) {
+        user.customRules.blockedSenders.push(cleanSender);
+        user.markModified('customRules');
+        await user.save();
+        addedSender = cleanSender;
+      }
+    }
+
+    res.json({
+      ok: true,
+      message: addedSender ? `Marked as noise & blocked ${addedSender}` : 'Marked as noise',
+      email: emailDoc,
+      addedSender
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/rules - Retrieve custom noise & keyword filtering rules
+ */
+router.get('/rules', async (req, res) => {
+  try {
+    const user = await getOrCreateDefaultUser();
+    res.json({
+      ok: true,
+      customRules: user.customRules || { blockedSenders: [], blockedKeywords: [], allowedSenders: [], allowedKeywords: [] }
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/rules - Add a custom filter rule (blocked sender or keyword)
+ */
+router.post('/rules', async (req, res) => {
+  try {
+    const { type, value } = req.body || {};
+    if (!type || !value) {
+      return res.status(400).json({ ok: false, message: 'type and value are required' });
+    }
+    const user = await getOrCreateDefaultUser();
+    if (!user.customRules) {
+      user.customRules = { blockedSenders: [], blockedKeywords: [], allowedSenders: [], allowedKeywords: [] };
+    }
+    const cleanVal = value.trim();
+    if (['blockedSenders', 'blockedKeywords', 'allowedSenders', 'allowedKeywords'].includes(type)) {
+      if (!user.customRules[type].includes(cleanVal)) {
+        user.customRules[type].push(cleanVal);
+        user.markModified('customRules');
+        await user.save();
+      }
+    }
+    res.json({ ok: true, customRules: user.customRules, message: `Added ${cleanVal} to ${type}` });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/rules - Remove a custom filter rule
+ */
+router.delete('/rules', async (req, res) => {
+  try {
+    const { type, value } = req.body || {};
+    const user = await getOrCreateDefaultUser();
+    if (user.customRules && user.customRules[type]) {
+      user.customRules[type] = user.customRules[type].filter(item => item !== value);
+      user.markModified('customRules');
+      await user.save();
+    }
+    res.json({ ok: true, customRules: user.customRules, message: `Removed ${value} from ${type}` });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

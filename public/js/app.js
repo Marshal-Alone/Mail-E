@@ -136,24 +136,35 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgSmsUrl.value = data.sms.gatewayUrl;
       }
 
+      const isCloud = (data.sms.gatewayUrl || '').includes('sms-gate.app') || data.sms.mode === 'cloud';
       if (data.sms.online) {
         dotSms.className = 'status-indicator online';
-        textSms.textContent = `SMS: Online (SIM 2)`;
+        textSms.textContent = isCloud ? `SMS: Cloud Online (SIM 2)` : `SMS: Online (SIM 2)`;
         if (pillSms) {
           pillSms.className = 'channel-pill active';
-          pillSms.title = `Phone Gateway connected at ${data.sms.gatewayUrl || 'Wi-Fi'} (SIM 2)`;
+          pillSms.title = isCloud
+            ? `Phone connected via Cloud Server api.sms-gate.app (${data.sms.device || 'Android'} • SIM 2)`
+            : `Phone Gateway connected at ${data.sms.gatewayUrl || 'Wi-Fi'} (SIM 2)`;
         }
-        if (cfgSmsStatus) cfgSmsStatus.textContent = `Gateway: Online at ${data.sms.gatewayUrl || 'Wi-Fi'} (SIM 2)`;
+        if (cfgSmsStatus) cfgSmsStatus.textContent = isCloud
+          ? `Gateway: Cloud Online via api.sms-gate.app (${data.sms.device || 'Android'} • SIM 2)`
+          : `Gateway: Online at ${data.sms.gatewayUrl || 'Wi-Fi'} (SIM 2)`;
 
         if (modalSmsBadge) {
           modalSmsBadge.className = 'badge bg-success';
-          modalSmsBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i> Online (SIM 2)';
+          modalSmsBadge.innerHTML = isCloud
+            ? '<i class="bi bi-cloud-check-fill me-1"></i> Cloud Online (SIM 2)'
+            : '<i class="bi bi-check-circle me-1"></i> Online (SIM 2)';
         }
         if (modalSmsDiag) {
           modalSmsDiag.className = 'offline-diag-card is-online mt-2 mb-3';
           if (modalSmsDiagIcon) modalSmsDiagIcon.className = 'bi bi-check-circle-fill text-success fs-5 mt-1';
-          if (modalSmsDiagTitle) modalSmsDiagTitle.textContent = 'Phone Gateway Connected';
-          if (modalSmsDiagDesc) modalSmsDiagDesc.innerHTML = `Connected to Android device at <code>${data.sms.gatewayUrl}</code>.`;
+          if (modalSmsDiagTitle) modalSmsDiagTitle.textContent = isCloud
+            ? 'Phone Cloud Relay Connected'
+            : 'Phone Gateway Connected';
+          if (modalSmsDiagDesc) modalSmsDiagDesc.innerHTML = isCloud
+            ? `Connected to <strong>${data.sms.device || 'Xiaomi'}</strong> via <code>api.sms-gate.app</code>. SMS alerts deliver reliably anywhere without local Wi-Fi or IP setup!`
+            : `Connected to Android device at <code>${data.sms.gatewayUrl}</code>.`;
           if (modalSmsDiagSteps) modalSmsDiagSteps.classList.add('d-none');
         }
         if (bannerOffline) {
@@ -257,9 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
     emailFeedContainer.innerHTML = '';
 
     const filtered = allEmails.filter(email => {
+      const isNoise = email.status === 'filtered' || ['promotional', 'other', 'noise'].includes(email.category);
       if (activeFilter === 'placement' && email.category !== 'placement') return false;
       if (activeFilter === 'interview' && email.category !== 'interview') return false;
-      if (activeFilter === 'filtered' && email.status !== 'filtered') return false;
+      if (activeFilter === 'filtered' && !isNoise) return false;
 
       if (searchQuery) {
         const fullText = `${email.subject} ${email.sender} ${email.aiAnalysis?.company || ''} ${email.aiAnalysis?.role || ''}`.toLowerCase();
@@ -307,6 +319,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Header (Always Visible)
       const headerDiv = document.createElement('div');
       headerDiv.className = 'email-card-header';
+      const markNoiseHtml = (isPlacement || isInterview) ? `
+        <button class="btn-mark-noise" data-email-id="${email._id}" title="Misclassified? Mark as Noise and add sender to blacklist">
+          <i class="bi bi-shield-x"></i> Mark as Noise
+        </button>
+      ` : '';
+
       headerDiv.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-1">
           <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -314,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="verdict-tag ${verdictClass}">${verdictLabel}</span>
           </div>
           <div class="d-flex align-items-center gap-3">
+            ${markNoiseHtml}
             <span class="email-time">${dateStr}</span>
             <span class="expand-indicator">
               <span>${isExpanded ? 'Hide Decision' : 'Inspect Decision'}</span>
@@ -324,6 +343,33 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="email-subject">${escapeHtml(email.subject)}</div>
         ${previewMeta ? `<div class="small mt-1">${previewMeta}</div>` : ''}
       `;
+
+      // Event listener for Mark as Noise
+      const btnNoise = headerDiv.querySelector('.btn-mark-noise');
+      if (btnNoise) {
+        btnNoise.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const emailId = btnNoise.dataset.emailId;
+          btnNoise.disabled = true;
+          btnNoise.innerHTML = '<span class="spinner-border spinner-border-sm" style="width: 0.7rem; height: 0.7rem;"></span>';
+          try {
+            const res = await fetch(`/api/emails/${emailId}/mark-noise`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ blockSender: true })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              await fetchEmails(false);
+              await fetchRules();
+            } else {
+              alert('Failed: ' + (data.error || data.message));
+            }
+          } catch (err) {
+            alert('Failed to mark as noise: ' + err.message);
+          }
+        });
+      }
 
       // Click to toggle Decision Inspector Drawer directly underneath
       headerDiv.addEventListener('click', () => {
@@ -853,8 +899,193 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ─── Custom Filter Rules System ───
+  async function fetchRules() {
+    try {
+      const res = await fetch('/api/rules');
+      if (!res.ok) return;
+      const data = await res.json();
+      const rules = data.customRules || {};
+      const senders = rules.blockedSenders || [];
+      const keywords = rules.blockedKeywords || [];
+
+      const countBadge = document.getElementById('badge-rules-count');
+      if (countBadge) {
+        countBadge.textContent = senders.length + keywords.length;
+      }
+
+      // Render Senders
+      const containerSenders = document.getElementById('container-blocked-senders');
+      if (containerSenders) {
+        containerSenders.innerHTML = '';
+        if (senders.length === 0) {
+          containerSenders.innerHTML = '<span class="text-secondary small fst-italic">No blocked senders yet.</span>';
+        } else {
+          senders.forEach(sender => {
+            const tag = document.createElement('span');
+            tag.className = 'rule-tag sender-tag';
+            tag.innerHTML = `
+              <span>${escapeHtml(sender)}</span>
+              <button type="button" class="btn-remove-tag" data-type="blockedSenders" data-val="${escapeHtml(sender)}" title="Remove sender block">×</button>
+            `;
+            containerSenders.appendChild(tag);
+          });
+        }
+      }
+
+      // Render Keywords
+      const containerKeywords = document.getElementById('container-blocked-keywords');
+      if (containerKeywords) {
+        containerKeywords.innerHTML = '';
+        if (keywords.length === 0) {
+          containerKeywords.innerHTML = '<span class="text-secondary small fst-italic">No blocked keywords yet.</span>';
+        } else {
+          keywords.forEach(kw => {
+            const tag = document.createElement('span');
+            tag.className = 'rule-tag keyword-tag';
+            tag.innerHTML = `
+              <span>${escapeHtml(kw)}</span>
+              <button type="button" class="btn-remove-tag" data-type="blockedKeywords" data-val="${escapeHtml(kw)}" title="Remove keyword block">×</button>
+            `;
+            containerKeywords.appendChild(tag);
+          });
+        }
+      }
+
+      // Attach tag removal events
+      document.querySelectorAll('.btn-remove-tag').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const type = btn.dataset.type;
+          const value = btn.dataset.val;
+          btn.textContent = '...';
+          try {
+            await fetch('/api/rules', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type, value })
+            });
+            await fetchRules();
+          } catch (err) {
+            console.warn('Failed to remove rule:', err);
+          }
+        };
+      });
+    } catch (err) {
+      console.warn('Failed to fetch rules:', err);
+    }
+  }
+
+  // Add Sender Rule
+  const btnAddBlockedSender = document.getElementById('btn-add-blocked-sender');
+  const inputNewBlockedSender = document.getElementById('input-new-blocked-sender');
+  if (btnAddBlockedSender && inputNewBlockedSender) {
+    const handleAddSender = async () => {
+      const val = inputNewBlockedSender.value.trim();
+      if (!val) return;
+      btnAddBlockedSender.disabled = true;
+      try {
+        await fetch('/api/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'blockedSenders', value: val })
+        });
+        inputNewBlockedSender.value = '';
+        await fetchRules();
+      } finally {
+        btnAddBlockedSender.disabled = false;
+      }
+    };
+    btnAddBlockedSender.addEventListener('click', handleAddSender);
+    inputNewBlockedSender.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleAddSender(); }
+    });
+  }
+
+  // Add Keyword Rule
+  const btnAddBlockedKeyword = document.getElementById('btn-add-blocked-keyword');
+  const inputNewBlockedKeyword = document.getElementById('input-new-blocked-keyword');
+  if (btnAddBlockedKeyword && inputNewBlockedKeyword) {
+    const handleAddKeyword = async () => {
+      const val = inputNewBlockedKeyword.value.trim();
+      if (!val) return;
+      btnAddBlockedKeyword.disabled = true;
+      try {
+        await fetch('/api/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'blockedKeywords', value: val })
+        });
+        inputNewBlockedKeyword.value = '';
+        await fetchRules();
+      } finally {
+        btnAddBlockedKeyword.disabled = false;
+      }
+    };
+    btnAddBlockedKeyword.addEventListener('click', handleAddKeyword);
+    inputNewBlockedKeyword.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handleAddKeyword(); }
+    });
+  }
+
+  // Preset Rule Packs
+  document.querySelectorAll('.btn-rule-pack').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pack = btn.dataset.pack;
+      btn.disabled = true;
+      try {
+        if (pack === 'naukri') {
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedSenders', value: 'contentnc@naukri.com' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedSenders', value: 'naukri.com' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedKeywords', value: 'tips to crack' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedKeywords', value: 'aptitude test' }) });
+        } else if (pack === 'internshala') {
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedSenders', value: 'digest@internshala.com' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedSenders', value: 'internshala.com' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedKeywords', value: 'training discount' }) });
+        } else if (pack === 'webinars') {
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedKeywords', value: 'free masterclass' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedKeywords', value: 'register for webinar' }) });
+          await fetch('/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'blockedKeywords', value: 'exclusive session' }) });
+        }
+        await fetchRules();
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // Switch to Cloud Gateway button
+  const btnUseCloudGateway = document.getElementById('btn-use-cloud-gateway');
+  if (btnUseCloudGateway) {
+    btnUseCloudGateway.addEventListener('click', async () => {
+      btnUseCloudGateway.disabled = true;
+      btnUseCloudGateway.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Switching...';
+      try {
+        const res = await fetch('/api/sms/set-gateway', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gatewayUrl: 'https://api.sms-gate.app' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          const cfgSmsUrl = document.getElementById('cfg-sms-url');
+          if (cfgSmsUrl) cfgSmsUrl.value = 'https://api.sms-gate.app';
+          await fetchStatus();
+          alert('Switched to Cloud SMS Gateway (https://api.sms-gate.app)!\nSMS alerts will now deliver 24/7 over mobile data and Wi-Fi without needing dynamic IP updates.');
+        }
+      } catch (err) {
+        alert('Failed: ' + err.message);
+      } finally {
+        btnUseCloudGateway.disabled = false;
+        btnUseCloudGateway.innerHTML = '<i class="bi bi-cloud-check me-1"></i> Use Cloud Server (api.sms-gate.app)';
+      }
+    });
+  }
+
   // Initial load
   fetchStatus();
+  fetchRules();
   fetchEmails(false); // Do not open by default
 
   // Polling

@@ -58,6 +58,14 @@
             data-bs-target="#modal-channels" style="font-size: 0.72rem;">Settings</button>
         </div>
 
+        <!-- Filter Rules Button -->
+        <button class="channel-pill btn-dropdown-custom d-flex align-items-center gap-1 border-0" id="pill-rules"
+          data-bs-toggle="modal" data-bs-target="#modal-rules" title="Custom Filter Rules (Block Senders & Keywords)" style="cursor: pointer;">
+          <i class="bi bi-funnel text-secondary"></i>
+          <span>Rules</span>
+          <span class="badge bg-secondary ms-1" id="badge-rules-count" style="font-size: 0.65rem;">0</span>
+        </button>
+
         <!-- Monitor Status Pill with Configuration Dropdown -->
         <div class="dropdown">
           <button class="channel-pill btn-dropdown-custom d-flex align-items-center gap-2 border-0" id="pill-monitor"
@@ -89,6 +97,14 @@
             <li><button class="dropdown-item text-warning" id="btn-toggle-monitor">Pause Polling</button></li>
           </ul>
         </div>
+
+        <!-- Action: Custom Filter Rules -->
+        <button class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1" data-bs-toggle="modal"
+          data-bs-target="#modal-rules" id="btn-open-rules" title="Custom Filter Rules (Block Senders & Keywords)">
+          <i class="bi bi-funnel-fill"></i>
+          <span>Filter Rules</span>
+          <span class="badge bg-warning text-dark ms-1" id="badge-rules-count" style="font-size: 0.68rem;">0</span>
+        </button>
 
         <!-- Action: Check Inbox Now -->
         <button class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 ms-1" id="btn-check-inbox">
@@ -313,6 +329,13 @@
                   <i class="bi bi-pin-angle"></i> Stop IP from changing
                 </a>
               </label>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" id="btn-use-cloud-gateway"
+                  style="font-size: 0.74rem;">
+                  <i class="bi bi-cloud-check me-1"></i> Use Cloud Server (api.sms-gate.app)
+                </button>
+                <span class="text-secondary small" style="font-size: 0.72rem;">No Wi-Fi or static IP needed!</span>
+              </div>
               <div class="input-group input-group-sm mb-1">
                 <input type="text" class="form-control text-light border-secondary" id="cfg-sms-url"
                   placeholder="e.g. http://10.69.134.73:8080 or https://xyz.ngrok-free.app" style="background: var(--bg-input);">
@@ -355,11 +378,91 @@
     </div>
   </div>
 
+  <!-- MODAL: Custom Filter Rules (Blacklist Senders & Keywords) -->
+  <div class="modal fade" id="modal-rules" tabindex="-1" aria-labelledby="modalRulesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content"
+        style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: #fff;">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <div>
+            <h6 class="modal-title fw-bold" id="modalRulesLabel">
+              <i class="bi bi-shield-x text-warning me-2"></i> Custom Placement Filter Rules
+            </h6>
+            <div class="small text-secondary">
+              Blacklist promotional senders or noise keywords to discard marketing emails with 0 AI cost.
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+
+          <!-- Section 1: Blocked Senders -->
+          <div class="mb-4">
+            <label class="form-label text-light small fw-bold d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-person-x text-danger me-1"></i> Blocked Senders (Blacklist)</span>
+              <span class="text-secondary small" style="font-size: 0.72rem;">Emails from these senders are instantly discarded</span>
+            </label>
+            <div class="input-group input-group-sm mb-2">
+              <input type="text" class="form-control text-light border-secondary" id="input-new-blocked-sender"
+                placeholder="e.g. contentnc@naukri.com or @naukri.com" style="background: var(--bg-input);">
+              <button class="btn btn-outline-danger" id="btn-add-blocked-sender">
+                <i class="bi bi-plus-circle me-1"></i> Block Sender
+              </button>
+            </div>
+            <div class="tags-container d-flex flex-wrap gap-2 p-2 rounded" id="container-blocked-senders"
+              style="background: var(--bg-app); min-height: 42px; border: 1px dashed var(--border-subtle);">
+              <span class="text-secondary small fst-italic">Loading rules...</span>
+            </div>
+          </div>
+
+          <!-- Section 2: Ignored Noise Keywords -->
+          <div class="mb-4">
+            <label class="form-label text-light small fw-bold d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-chat-square-x text-warning me-1"></i> Ignored Keywords (Noise Phrases)</span>
+              <span class="text-secondary small" style="font-size: 0.72rem;">Emails containing these phrases are discarded</span>
+            </label>
+            <div class="input-group input-group-sm mb-2">
+              <input type="text" class="form-control text-light border-secondary" id="input-new-blocked-keyword"
+                placeholder="e.g. tips to crack, aptitude test, webinar, scholarship" style="background: var(--bg-input);">
+              <button class="btn btn-outline-warning" id="btn-add-blocked-keyword">
+                <i class="bi bi-plus-circle me-1"></i> Add Keyword
+              </button>
+            </div>
+            <div class="tags-container d-flex flex-wrap gap-2 p-2 rounded" id="container-blocked-keywords"
+              style="background: var(--bg-app); min-height: 42px; border: 1px dashed var(--border-subtle);">
+              <span class="text-secondary small fst-italic">Loading rules...</span>
+            </div>
+          </div>
+
+          <!-- Section 3: 1-Click Quick Preset Packs -->
+          <div class="mb-2">
+            <label class="form-label text-secondary small fw-semibold">QUICK 1-CLICK BLOCK PACKS:</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-sm btn-outline-secondary btn-rule-pack" data-pack="naukri" style="font-size: 0.74rem;">
+                <i class="bi bi-shield-plus text-warning me-1"></i> Block Naukri Spam Pack
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btn-rule-pack" data-pack="internshala" style="font-size: 0.74rem;">
+                <i class="bi bi-shield-plus text-info me-1"></i> Block Internshala Promos
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btn-rule-pack" data-pack="webinars" style="font-size: 0.74rem;">
+                <i class="bi bi-shield-plus text-primary me-1"></i> Block Masterclasses & Webinars
+              </button>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25 py-2">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap 5 JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Modern Application Controller -->
-  <script src="js/app.js?v=2.3"></script>
+  <script src="js/app.js?v=2.4"></script>
 </body>
 
 </html>

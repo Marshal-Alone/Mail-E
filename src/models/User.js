@@ -21,6 +21,31 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  smsCloudConfig: {
+    enabled: { type: Boolean, default: true },
+    serverUrl: { type: String, default: 'https://api.sms-gate.app' },
+    username: { type: String, default: '7-U_KR' },
+    password: { type: String, default: 'ff7tccaalb7cct' },
+    deviceId: { type: String, default: 'h4l1sFkuCjylnM_I0TYi-' }
+  },
+  customRules: {
+    blockedSenders: {
+      type: [String],
+      default: ['contentnc@naukri.com', 'naukri.com', 'digest@internshala.com']
+    },
+    blockedKeywords: {
+      type: [String],
+      default: ['tips to crack', 'aptitude test', 'mock test', 'preparation guide', 'masterclass']
+    },
+    allowedSenders: {
+      type: [String],
+      default: []
+    },
+    allowedKeywords: {
+      type: [String],
+      default: []
+    }
+  },
   telegramChatId: {
     type: String,
     default: null

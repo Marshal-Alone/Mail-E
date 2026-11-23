@@ -31,8 +31,8 @@ export async function processEmail({ user, email, addLog = () => {} }) {
   }
   addLog('DUPLICATE_CHECK', '✓ Unseen message confirmed');
 
-  // Stage 2: Heuristic Pre-Filter
-  const filterResult = preFilterEmail(subject, bodyText);
+  // Stage 2: Heuristic Pre-Filter with Custom Rules
+  const filterResult = preFilterEmail(subject, bodyText, sender, user?.customRules);
   if (!filterResult.isRelevant) {
     addLog('PRE_FILTER', `🚫 Filtered: ${filterResult.reason}`, 'rejected');
     addLog('AI_SKIPPED', '🛡️ AI extraction skipped for non-placement noise', 'info');
