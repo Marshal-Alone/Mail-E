@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: mail-e
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: STUDENT_TELEGRAM_CHAT_ID
+        sync: false
+      - key: STUDENT_PHONE
+        sync: false
+      - key: SMS_GATEWAY_URL
+        sync: false
+      - key: SMS_GATEWAY_USERNAME
+        sync: false
+      - key: SMS_GATEWAY_PASSWORD
+        sync: false
