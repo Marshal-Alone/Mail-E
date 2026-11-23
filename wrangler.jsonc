@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mail-e",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-23",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "no_handle_cross_request_promise_resolution"
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "triggers": {
+    "crons": [
+      "*/3 * * * *"
+    ]
+  },
+  "vars": {
+    "STUDENT_PHONE": "+918788516418",
+    "POLL_INTERVAL_MINUTES": "3"
+  },
+  "alias": {
+    "mongoose": "./node_modules/mongoose/index.js"
+  }
+}

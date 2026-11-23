@@ -140,6 +140,39 @@ Visit the dashboard in your browser: `http://localhost:5000`
 
 ---
 
+## ☁️ Deployment: Cloudflare Workers (Method 2)
+
+Mail-E features native zero-cost serverless deployment on **Cloudflare Workers** with **Workers Static Assets** and **Cron Triggers**:
+
+- **Edge Worker API (`src/worker.js`)**: Ultra-fast REST router powered by Hono and `nodejs_compat`.
+- **Workers Static Assets (`wrangler.jsonc`)**: Direct edge CDN hosting for the dashboard frontend (`./public`).
+- **Autonomous Cron Trigger**: Evaluates `*/3 * * * *` to run 3-minute Gmail inbox scans without a long-lived Node.js server.
+
+### Local Development Preview
+```bash
+# Run local Cloudflare Worker preview with live assets on port 8787
+npm run worker:dev
+```
+
+### Production Deployment to Cloudflare
+```bash
+# 1. Login to Cloudflare CLI
+npx wrangler login
+
+# 2. Configure production secrets
+npx wrangler secret put MONGODB_URI
+npx wrangler secret put GEMINI_API_KEY
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+npx wrangler secret put TELEGRAM_BOT_TOKEN
+npx wrangler secret put STUDENT_PHONE
+
+# 3. Deploy application & static assets to global Cloudflare edge
+npm run worker:deploy
+```
+
+---
+
 ## 💬 Interview Preparation: Talking Points
 
 When discussing this project in an interview:

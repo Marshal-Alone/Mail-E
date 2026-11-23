@@ -2,3 +2,4 @@
 LocalOTPServer
 *.log
 node_modules
+.wrangler

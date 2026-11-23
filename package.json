@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy",
     "test": "node --test tests/notifier.test.js",
     "check": "node --check src/server.js && node --check src/routes/api.js && node --check src/services/emailProcessor.js && node --check src/services/monitor.js && node --check src/services/notifier.js && node --check src/services/sms.js && node --check src/services/telegram.js && node --check src/services/ai.js && node --check src/services/gmail.js"
   },
@@ -28,7 +30,11 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
+    "hono": "^4.13.20",
     "mongoose": "^8.9.5",
     "nodemon": "^3.1.14"
+  },
+  "devDependencies": {
+    "wrangler": "^4.166.0"
   }
 }

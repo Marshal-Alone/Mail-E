@@ -74,4 +74,5 @@ const EmailSchema = new mongoose.Schema({
   }
 });
 
-export default mongoose.models.Email || mongoose.model('Email', EmailSchema);
+const mg = mongoose?.default || mongoose;
+export default (mg.models && mg.models.Email) ? mg.models.Email : mg.model('Email', EmailSchema);
