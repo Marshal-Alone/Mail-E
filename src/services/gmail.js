@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { gmail as getGmailClient, auth } from 'googleapis/build/src/apis/gmail/index.js';
 
 /**
  * Gmail Service for Mail-E
@@ -14,7 +14,7 @@ export function getOAuth2Client(customRedirectUri) {
     return null;
   }
 
-  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  return new auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
 /**
@@ -58,7 +58,7 @@ export async function getGmailProfile(tokens) {
   const oauth2Client = getOAuth2Client();
   if (!oauth2Client || !tokens) return null;
   oauth2Client.setCredentials(tokens);
-  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const gmail = getGmailClient({ version: 'v1', auth: oauth2Client });
   const profileRes = await gmail.users.getProfile({ userId: 'me' });
   return profileRes.data;
 }
@@ -92,7 +92,7 @@ export async function fetchRecentEmails(tokens, maxResults = 15) {
   }
 
   oauth2Client.setCredentials(tokens);
-  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const gmail = getGmailClient({ version: 'v1', auth: oauth2Client });
 
   // List recent messages - search recent inbox messages
   const listRes = await gmail.users.messages.list({
