@@ -250,7 +250,9 @@ app.post('/api/simulate', async (c) => {
  * GET /api/gmail/connect - Redirect to Google OAuth
  */
 app.get('/api/gmail/connect', (c) => {
-  const url = getAuthUrl();
+  const origin = new URL(c.req.url).origin;
+  const autoRedirectUri = process.env.GOOGLE_REDIRECT_URI || `${origin}/api/gmail/callback`;
+  const url = getAuthUrl(autoRedirectUri);
   if (!url) {
     return c.text('Google Client ID/Secret not configured in environment', 400);
   }
@@ -267,7 +269,9 @@ app.get('/api/gmail/callback', async (c) => {
   }
 
   try {
-    const tokens = await getTokensFromCode(code);
+    const origin = new URL(c.req.url).origin;
+    const autoRedirectUri = process.env.GOOGLE_REDIRECT_URI || `${origin}/api/gmail/callback`;
+    const tokens = await getTokensFromCode(code, autoRedirectUri);
     const user = await getOrCreateDefaultUser();
     user.oauthTokens = tokens;
     user.gmailConnected = true;

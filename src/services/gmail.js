@@ -5,10 +5,10 @@ import { google } from 'googleapis';
  * Handles Google OAuth2 authentication and message retrieval.
  */
 
-export function getOAuth2Client() {
+export function getOAuth2Client(customRedirectUri) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/gmail/callback';
+  const redirectUri = customRedirectUri || process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/gmail/callback';
 
   if (!clientId || !clientSecret) {
     return null;
@@ -20,8 +20,8 @@ export function getOAuth2Client() {
 /**
  * Generate Google OAuth 2.0 authorization URL
  */
-export function getAuthUrl() {
-  const oauth2Client = getOAuth2Client();
+export function getAuthUrl(customRedirectUri) {
+  const oauth2Client = getOAuth2Client(customRedirectUri);
   if (!oauth2Client) {
     return null;
   }
@@ -41,8 +41,8 @@ export function getAuthUrl() {
 /**
  * Exchange authorization code for tokens
  */
-export async function getTokensFromCode(code) {
-  const oauth2Client = getOAuth2Client();
+export async function getTokensFromCode(code, customRedirectUri) {
+  const oauth2Client = getOAuth2Client(customRedirectUri);
   if (!oauth2Client) {
     throw new Error('Google OAuth credentials are not configured in .env');
   }

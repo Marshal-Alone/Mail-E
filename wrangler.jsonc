@@ -22,7 +22,9 @@
   },
   "vars": {
     "STUDENT_PHONE": "+918788516418",
-    "POLL_INTERVAL_MINUTES": "3"
+    "POLL_INTERVAL_MINUTES": "3",
+    "SMS_GATEWAY_URL": "http://10.69.134.73:8080",
+    "TELEGRAM_BOT_USERNAME": "MailE_Placement_Bot"
   },
   "alias": {
     "mongoose": "./node_modules/mongoose/index.js"
