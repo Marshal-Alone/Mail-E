@@ -116,14 +116,15 @@ export async function checkSmsServerHealth() {
     const res = await fetch(`${SMS_GATEWAY_URL}/message`, {
       method: 'GET',
       headers: { Authorization: `Basic ${authHeader}` },
-      signal: AbortSignal.timeout(1500)
+      signal: AbortSignal.timeout(3500)
     });
-    if (res.status < 500) {
+    // Real Android SMS Gateway returns 200 (or 401 if credentials mismatch).
+    // Cloudflare Edge blocks private RFC1918 IPs with 403/400, which are NOT online.
+    if (res.ok || res.status === 200 || res.status === 401) {
       return { online: true, url: SMS_GATEWAY_URL };
     }
+    return { online: false, url: SMS_GATEWAY_URL, error: `HTTP ${res.status}: Private network or gateway unreachable` };
   } catch (err) {
     return { online: false, url: SMS_GATEWAY_URL, error: err.message };
   }
-
-  return { online: false, url: SMS_GATEWAY_URL, error: 'Non-200 HTTP response' };
 }

@@ -17,6 +17,10 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  smsGatewayUrl: {
+    type: String,
+    default: null
+  },
   telegramChatId: {
     type: String,
     default: null

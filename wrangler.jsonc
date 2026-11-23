@@ -22,7 +22,7 @@
   },
   "vars": {
     "POLL_INTERVAL_MINUTES": "3",
-    "SMS_GATEWAY_URL": "http://10.69.134.73:8080",
+    "SMS_GATEWAY_URL": "http://100.95.255.93:8080",
     "TELEGRAM_BOT_USERNAME": "MailE_Placement_Bot"
   },
   "alias": {
