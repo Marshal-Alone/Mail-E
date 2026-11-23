@@ -18,11 +18,15 @@ async function getOrCreateDefaultUser() {
     user = await User.create({
       name: 'Campus Student',
       email: 'student.placement@college.edu',
-      phoneNumber: process.env.STUDENT_PHONE || '+918788516418'
+      phoneNumber: process.env.STUDENT_PHONE || '+918788516418',
+      smsGatewayUrl: process.env.SMS_GATEWAY_URL || 'http://100.95.255.93:8080'
     });
   } else if (!user.phoneNumber) {
     user.phoneNumber = process.env.STUDENT_PHONE || '+918788516418';
     await user.save();
+  }
+  if (user.smsGatewayUrl) {
+    setSmsGatewayUrl(user.smsGatewayUrl);
   }
   return user;
 }
@@ -226,7 +230,10 @@ router.post('/gmail/check', async (req, res) => {
       return res.status(400).json({ ok: false, message: 'Gmail account not connected yet' });
     }
 
-    const newEmails = await fetchRecentEmails(user.oauthTokens, 5);
+    const newEmails = await fetchRecentEmails(user.oauthTokens, {
+      sinceDate: user.lastCheckedAt,
+      maxResults: 30
+    });
     const processed = [];
 
     for (const email of newEmails) {
@@ -235,6 +242,9 @@ router.post('/gmail/check', async (req, res) => {
         processed.push(result.emailDoc);
       }
     }
+
+    user.lastCheckedAt = new Date();
+    await user.save();
 
     res.json({ ok: true, found: newEmails.length, processed: processed.length, emails: processed });
   } catch (err) {
@@ -310,24 +320,28 @@ router.post('/sms/test', async (req, res) => {
 /**
  * POST /api/sms/set-gateway - Configure phone SMS Gateway URL
  */
-router.post('/sms/set-gateway', (req, res) => {
+router.post('/sms/set-gateway', async (req, res) => {
   const { gatewayUrl } = req.body;
   if (!gatewayUrl) {
     return res.status(400).json({ ok: false, message: 'Gateway URL is required' });
   }
   const updated = setSmsGatewayUrl(gatewayUrl);
-  res.json({ ok: true, gatewayUrl: updated, message: 'Gateway URL updated successfully' });
+  const user = await getOrCreateDefaultUser();
+  user.smsGatewayUrl = updated;
+  await user.save();
+  res.json({ ok: true, gatewayUrl: updated, message: 'Gateway URL updated and saved permanently to database' });
 });
 
 /**
  * GET/POST /api/sms/heartbeat - Auto-register Android device dynamic IP
  */
-router.all('/sms/heartbeat', (req, res) => {
+router.all('/sms/heartbeat', async (req, res) => {
   const urlParam = req.query.url || req.query.ip || req.body?.url || req.body?.ip;
   if (!urlParam) {
+    const user = await getOrCreateDefaultUser();
     return res.status(400).json({
       ok: false,
-      currentGatewayUrl: getSmsGatewayUrl(),
+      currentGatewayUrl: user.smsGatewayUrl || getSmsGatewayUrl(),
       message: 'Pass ?url=http://<phone-ip>:8080 or ?ip=<phone-ip> to auto-register'
     });
   }
@@ -339,10 +353,13 @@ router.all('/sms/heartbeat', (req, res) => {
     fullUrl = `${fullUrl}:8080`;
   }
   const updated = setSmsGatewayUrl(fullUrl);
+  const user = await getOrCreateDefaultUser();
+  user.smsGatewayUrl = updated;
+  await user.save();
   res.json({
     ok: true,
     gatewayUrl: updated,
-    message: `Phone gateway auto-registered to ${updated}`
+    message: `Phone gateway auto-registered and saved permanently to database: ${updated}`
   });
 });
 

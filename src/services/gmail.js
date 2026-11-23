@@ -83,9 +83,18 @@ function extractBodyFromPayload(payload) {
 }
 
 /**
- * Check recent emails from Gmail inbox using OAuth tokens
+ * Fetch new emails from Gmail inbox using time-based incremental sync
+ *
+ * @param {Object} tokens - OAuth tokens
+ * @param {Object|number} [options] - Sync options or legacy maxResults integer
+ * @param {Date} [options.sinceDate] - Only fetch emails received after this timestamp
+ * @param {number} [options.maxResults] - Maximum emails per sync cycle (default: 30)
+ * @param {string} [options.query] - Custom Gmail search filter
  */
-export async function fetchRecentEmails(tokens, maxResults = 15) {
+export async function fetchRecentEmails(tokens, options = {}) {
+  const opts = typeof options === 'number' ? { maxResults: options } : options;
+  const { sinceDate = null, maxResults = 30, query = null } = opts;
+
   const oauth2Client = getOAuth2Client();
   if (!oauth2Client || !tokens) {
     throw new Error('Gmail OAuth is not connected');
@@ -94,11 +103,24 @@ export async function fetchRecentEmails(tokens, maxResults = 15) {
   oauth2Client.setCredentials(tokens);
   const gmail = getGmailClient({ version: 'v1', auth: oauth2Client });
 
-  // List recent messages - search recent inbox messages
+  // Time-based incremental query:
+  // 1. If sinceDate exists: fetch messages received after that exact timestamp
+  // 2. If new user: look back 2 days (newer_than:2d) to capture active drives without indexing historical spam
+  let q = 'in:inbox';
+  if (query) {
+    q = query;
+  } else if (sinceDate && sinceDate instanceof Date && !isNaN(sinceDate.getTime())) {
+    const sinceSeconds = Math.floor(sinceDate.getTime() / 1000);
+    q = `in:inbox after:${sinceSeconds}`;
+  } else {
+    q = 'in:inbox newer_than:2d';
+  }
+
+  // List recent messages matching query
   const listRes = await gmail.users.messages.list({
     userId: 'me',
     maxResults,
-    q: 'in:inbox'
+    q
   });
 
   const messages = listRes.data.messages || [];

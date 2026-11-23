@@ -54,7 +54,10 @@ export async function pollInbox() {
       try {
         if (!user.oauthTokens || !user.oauthTokens.access_token) continue;
 
-        const recentEmails = await fetchRecentEmails(user.oauthTokens, 5);
+        const recentEmails = await fetchRecentEmails(user.oauthTokens, {
+          sinceDate: user.lastCheckedAt,
+          maxResults: 30
+        });
 
         for (const rawEmail of recentEmails) {
           const result = await processEmail({

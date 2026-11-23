@@ -72,11 +72,15 @@ async function getOrCreateDefaultUser() {
       user = await User.create({
         name: 'Campus Student',
         email: 'student.placement@college.edu',
-        phoneNumber: process.env.STUDENT_PHONE || '+918788516418'
+        phoneNumber: process.env.STUDENT_PHONE || '+918788516418',
+        smsGatewayUrl: process.env.SMS_GATEWAY_URL || 'http://100.95.255.93:8080'
       });
     } else if (!user.phoneNumber) {
       user.phoneNumber = process.env.STUDENT_PHONE || '+918788516418';
       await user.save();
+    }
+    if (user.smsGatewayUrl) {
+      setSmsGatewayUrl(user.smsGatewayUrl);
     }
     return user;
   } catch (err) {
@@ -84,6 +88,7 @@ async function getOrCreateDefaultUser() {
       name: 'Campus Student',
       email: 'student.placement@college.edu',
       phoneNumber: process.env.STUDENT_PHONE || '+918788516418',
+      smsGatewayUrl: getSmsGatewayUrl(),
       smsAlertsEnabled: true,
       telegramChatId: process.env.STUDENT_TELEGRAM_CHAT_ID || null,
       save: async () => {}
@@ -302,7 +307,10 @@ app.post('/api/gmail/check', async (c) => {
       return c.json({ ok: false, message: 'Gmail account not connected yet' }, 400);
     }
 
-    const newEmails = await fetchRecentEmails(user.oauthTokens, 5);
+    const newEmails = await fetchRecentEmails(user.oauthTokens, {
+      sinceDate: user.lastCheckedAt,
+      maxResults: 30
+    });
     const processed = [];
 
     for (const email of newEmails) {
@@ -311,6 +319,9 @@ app.post('/api/gmail/check', async (c) => {
         processed.push(result.emailDoc);
       }
     }
+
+    user.lastCheckedAt = new Date();
+    await user.save();
 
     return c.json({ ok: true, found: newEmails.length, processed: processed.length, emails: processed });
   } catch (err) {
@@ -395,7 +406,10 @@ app.post('/api/sms/set-gateway', async (c) => {
     return c.json({ ok: false, message: 'Gateway URL is required' }, 400);
   }
   const updated = setSmsGatewayUrl(gatewayUrl);
-  return c.json({ ok: true, gatewayUrl: updated, message: 'Gateway URL updated successfully' });
+  const user = await getOrCreateDefaultUser();
+  user.smsGatewayUrl = updated;
+  await user.save();
+  return c.json({ ok: true, gatewayUrl: updated, message: 'Gateway URL updated and saved permanently to database' });
 });
 
 /**
@@ -409,9 +423,10 @@ app.all('/api/sms/heartbeat', async (c) => {
     urlParam = body.url || body.ip;
   }
   if (!urlParam) {
+    const user = await getOrCreateDefaultUser();
     return c.json({
       ok: false,
-      currentGatewayUrl: getSmsGatewayUrl(),
+      currentGatewayUrl: user.smsGatewayUrl || getSmsGatewayUrl(),
       message: 'Pass ?url=http://<phone-ip>:8080 or ?ip=<phone-ip> to auto-register'
     }, 400);
   }
@@ -423,10 +438,13 @@ app.all('/api/sms/heartbeat', async (c) => {
     fullUrl = `${fullUrl}:8080`;
   }
   const updated = setSmsGatewayUrl(fullUrl);
+  const user = await getOrCreateDefaultUser();
+  user.smsGatewayUrl = updated;
+  await user.save();
   return c.json({
     ok: true,
     gatewayUrl: updated,
-    message: `Phone gateway auto-registered to ${updated}`
+    message: `Phone gateway auto-registered and saved permanently to database: ${updated}`
   });
 });
 

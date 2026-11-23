@@ -603,6 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetch('/api/emails', { method: 'DELETE' });
         openEmailIds.clear();
         await fetchEmails();
+        await fetchStatus();
       } catch (err) {
         alert('Failed to clear inbox: ' + err.message);
       }
